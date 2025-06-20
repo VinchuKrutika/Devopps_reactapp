@@ -1,0 +1,46 @@
+name: Deploy React App to EC2
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Copy build folder to EC2
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.MY_DNS_HOST_KEY }}
+          username: ubuntu
+          key: ${{ secrets.MY_EC2_RSA_SECRET_KEY }}
+          port: ${{ secrets.MY_PORT_KEY }}
+          source: "build/*"
+          target: "~/react-app/"
+
+      - name: Restart Nginx on EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.MY_DNS_HOST_KEY }}
+          username: ubuntu
+          key: ${{ secrets.MY_EC2_RSA_SECRET_KEY }}
+          port: ${{ secrets.MY_PORT_KEY }}
+          script: |
+            sudo systemctl restart nginx
